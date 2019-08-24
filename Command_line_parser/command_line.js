@@ -10,6 +10,9 @@ var commandList=[];
 //Stores Command Name
 var commandName={};
 
+//Stores smallCommand Name
+var commandsmallName={};
+
 //Stores the argument in JSON format
 var argument_JSON={};
 
@@ -52,7 +55,7 @@ class Parser
         commandList.push(help_obj);
 
         //set the command name
-        commandName["help_obj"]=1;
+        commandName["help_obj"]=0;
     }
 
     /**
@@ -107,8 +110,22 @@ class Parser
             throw new Error(input_command.command+' Command already exists');
         }
         
-        commandName[input_command.command]=1;
+        //Checks for smallCommand Input
+        if(input_command.smallCommand!=null && (!this.correctCommand(input_command.smallCommand) || commandsmallName[input_command.smallCommand]!=null))
+        {
+            throw new Error('Enter correct samllCommand for command '+input_command.command);
+        }
+
         commandList.push(input_command);
+
+        //assing bot name and small to index of commandList
+        commandName[input_command.command]=commandList.length-1;
+
+        if(input_command.smallCommand!=null)
+        {
+            commandsmallName[input_command.smallCommand]=commandName[input_command.command];
+        }
+        // console.log(commandList[1]);
     }
 
     /**
@@ -121,101 +138,109 @@ class Parser
         
         input_arg.forEach((val) => {
 
-            if(val.startsWith("--"))
+            if(val.startsWith("--") || val.startsWith("-"))
             {
-                //Silces the "--" from argument
-                val=val.slice(2);
+                var command_available;
 
-                //Stores the current argument in a var
-                var input_command=val;
+                //For Name
+                if(val.startsWith("--"))
+                {
+                    //Silces the "--" from argument
+                    val=val.slice(2);
 
-                //Checks that a command exists in the commandList
-                if(commandName[(val.split("=")[0])]!=1)
-                    throw new Error("Command "+val.split("=")[0]+" does not exist");
+                    //Checks that a command exists in the commandList
+                    if(commandName[(val.split("=")[0])]==null)
+                        throw new Error("Command "+val.split("=")[0]+" does not exist");
 
-                commandList.forEach((command_available)=>{
 
-                    if(val.startsWith(command_available.command))
-                    {   
-                        if(command_available.ExclusiveIndex!=null)
+                    command_available=commandList[commandName[(val.split("=")[0])]];
+                }
+                
+                //For smallName
+                else if(val.startsWith("-"))
+                {
+                    val=val.slice(1);
+
+                    //Checks that a command exists in the commandList
+                    if(commandsmallName[(val.split("=")[0])]==null)
+                        throw new Error("Command "+val.split("=")[0]+" does not exist");
+
+
+                    command_available=commandList[commandsmallName[(val.split("=")[0])]];
+                }
+
+                if(command_available.ExclusiveIndex!=null)
+                {
+                    //Checks if this command has previously occured or not 
+                    if(this.isSetExclusive[command_available.ExclusiveIndex]!="0")
+                    {
+                        throw new Error("The "+command_available.command+" and "+this.isSetExclusive[command_available.ExclusiveIndex]+" arguments cannot be used together.");
+                    }
+                    else
+                    {
+                        //Sets index EclusiveIndex of isSetExclusive with command name
+                        this.isSetExclusive[command_available.ExclusiveIndex]=command_available.command;
+                    }
+                }
+
+                if(command_available.demandOption)
+                {
+                    if(!val.includes("="))
+                    {
+                        throw new Error("The '--"+command_available.command+"' argument is required, but missing from input.");
+                    }
+
+                    //Takes the value of argument
+                    val=val.split("=")[1];
+
+                    //Checks the command type
+                    var command_type=command_available.type;
+
+                    if(command_type=='string')
+                    {
+                        if(this.isString(val))
                         {
-                            //Checks if this command has previously occured or not 
-                            if(this.isSetExclusive[command_available.ExclusiveIndex]!="0")
-                            {
-                                throw new Error("The "+command_available.command+" and "+this.isSetExclusive[command_available.ExclusiveIndex]+" arguments cannot be used together.");
-                            }
-                            else
-                            {
-                                //Sets index EclusiveIndex of isSetExclusive with command name
-                                this.isSetExclusive[command_available.ExclusiveIndex]=command_available.command;
-                            }
+                            var command_obj= command_available.command;
+                            argument_JSON[command_obj]=val;
+                        }
+                        else
+                        {
+                            throw new Error(Incorrect_Argument_Message(command_available.command));
+                        }
+                    }
+
+                    else if(command_type=='number')
+                    {
+                        if(this.isNumber(val))
+                        {
+                            var command_obj= command_available.command;
+                            argument_JSON[command_obj]=val;
                         }
 
-                        if(command_available.demandOption)
+                        else
                         {
-                            if(!val.includes("="))
-                            {
-                                throw new Error("The '--"+command_available.command+"' argument is required, but missing from input.");
-                            }
+                            throw new Error(Incorrect_Argument_Message(command_available.command));
+                        }
+                    }
 
-                            //Takes the value of argument
-                            val=val.split("=")[1];
-
-                            //Checks the command type
-                            var command_type=command_available.type;
-
-                            if(command_type=='string')
-                            {
-                                if(this.isString(val))
-                                {
-                                    var command_obj= command_available.command;
-                                    argument_JSON[command_obj]=val;
-                                }
-                                else
-                                {
-                                    throw new Error(Incorrect_Argument_Message(command_available.command));
-                                }
-                            }
-
-                            else if(command_type=='number')
-                            {
-                                if(this.isNumber(val))
-                                {
-                                    var command_obj= command_available.command;
-                                    argument_JSON[command_obj]=val;
-                                }
-
-                                else
-                                {
-                                    throw new Error(Incorrect_Argument_Message(command_available.command));
-                                }
-                            }
-
-                            else
-                            {
-                                if(this.isBoolean(val))
-                                {
-                                    var command_obj= command_available.command;
-                                    argument_JSON[command_obj]=val;
-                                }
-
-                                else
-                                {
-                                    throw new Error(Incorrect_Argument_Message(command_available.command));
-                                }
-                            }
-
-                            
+                    else
+                    {
+                        if(this.isBoolean(val))
+                        {
+                            var command_obj= command_available.command;
+                            argument_JSON[command_obj]=val;
                         }
 
-                        //Checks for handler of command and execute it
-                        if(command_available.handler!=null)
-                            command_available.handler.apply();
+                        else
+                        {
+                            throw new Error(Incorrect_Argument_Message(command_available.command));
+                        }
+                    }
 
-                        //break loop of commands if input_argument matches
-                        return;
-                    }    
-                })
+                    //Checks for handler of command and execute it
+                    if(command_available.handler!=null)
+                        command_available.handler.apply();
+                }    
 
             }
 
