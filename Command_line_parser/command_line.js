@@ -4,6 +4,15 @@
  */
 
 
+//Stores all commands
+var commandList=[];
+
+//Stores Command Name
+var commandName={};
+
+//Stores the argument in JSON format
+var argument_JSON={};
+
 /**
 * Parser Class
 */
@@ -15,11 +24,6 @@ class Parser
     */
     constructor()
     { 
-        //Stores all commands
-        this.commandList=[];
-
-        //Stores the argument in JSON format
-        this.argument_JSON={};
 
         //To check two Exclusive commands doesn't get together 
         this.isSetExclusive= new Array(100).fill("0");
@@ -45,66 +49,66 @@ class Parser
             }
         }
 
-        //Adds help to commandList
-        this.commandList.push(help_obj);
+        commandList.push(help_obj);
+
+        //set the command name
+        commandName["help_obj"]=1;
     }
 
     /**
      * Add commands to commandList
-     * @param {JSON_object} add_command
+     * @param {JSON_object} input_command
      */
-    command(add_command)
+    add_command(input_command)
     {
-        //Checks command fromat
-        if(!this.correctCommand(add_command.command))
+        if(!this.correctCommand(input_command.command))
         {
             throw new Error('Enter correct command');
         }
 
-        //Checks type fromat
-        if(!this.correctType(add_command.type))
+        if(!this.correctType(input_command.type))
         {
-            throw new Error('Enter correct type for command '+add_command.command);
+            throw new Error('Enter correct type for command '+input_command.command);
         }
 
-        //Checks DemandOption fromat
-        if(!this.correctDemandOption(add_command.demandOption))
+        if(!this.correctDemandOption(input_command.demandOption))
         {
-            throw new Error('Enter correct demandOption for command '+add_command.command);
+            throw new Error('Enter correct demandOption for command '+input_command.command);
         }
 
-        //Checks for describe
-        if(add_command.describe==null)
+        if(input_command.describe==null)
         {
-            throw new Error('Enter command description for command '+add_command.command);
+            throw new Error('Enter command description for command '+input_command.command);
         }
 
-        //Checks if decribe is a string
-        if(!this.isString(add_command.describe.replace(/ /g,'')))
+        if(!this.isString(input_command.describe.replace(/ /g,'')))
         {
-            throw new Error('Enter command description in correct format for command '+add_command.command);
+            throw new Error('Enter command description in correct format for command '+input_command.command);
         }
 
-        //Check ExclusiveIndex is set 
-        if(add_command.ExclusiveIndex!=null)
+        if(input_command.ExclusiveIndex!=null)
         {
             //Checks ExclusiveIndex fromat & range
-            if(!Number.isInteger(add_command.ExclusiveIndex) || add_command.ExclusiveIndex>=100)
-                throw new Error('Enter correct ExclusiveIndex for command '+add_command.command);
+            if(!Number.isInteger(input_command.ExclusiveIndex) || input_command.ExclusiveIndex>=100)
+                throw new Error('Enter correct ExclusiveIndex for command '+input_command.command);
         }
 
-        //Sets type to string if null
-        if(add_command.type==null)
+        if(input_command.type==null)
         {
-            add_command.type="string";
+            input_command.type="string";
         }
 
-        //Sets type to string if null
-        if(add_command.demandOption==null)
-            add_command.demandOption=false;
+        if(input_command.demandOption==null)
+            input_command.demandOption=false;
+
+        //Checks for two command woth same name
+        if(commandName[input_command.command]==1)
+        {
+            throw new Error(input_command.command+' Command already exists');
+        }
         
-        //Adds the command to commandList
-        this.commandList.push(add_command);
+        commandName[input_command.command]=1;
+        commandList.push(input_command);
     }
 
     /**
@@ -115,10 +119,8 @@ class Parser
         //process.argv returns all input arguments && slice(2) for removing first two unwanted arguments 
         var input_arg=process.argv.slice(2);
         
-        //Checks for each input_arg
         input_arg.forEach((val) => {
 
-            //Checks argument must start with "--" 
             if(val.startsWith("--"))
             {
                 //Silces the "--" from argument
@@ -128,26 +130,19 @@ class Parser
                 var input_command=val;
 
                 //Checks that a command exists in the commandList
-                var command_exist=0;
+                if(commandName[(val.split("=")[0])]!=1)
+                    throw new Error("Command "+val.split("=")[0]+" does not exist");
 
-                //Checks commandList for a match
-                this.commandList.forEach((command_available)=>{
+                commandList.forEach((command_available)=>{
 
-                    //Checks if argument starts with a command specified
                     if(val.startsWith(command_available.command))
-                    {
-                        //Sets command_exists true
-                        command_exist=1;
-                        
-                        //Checks if this command have a exclusive property
+                    {   
                         if(command_available.ExclusiveIndex!=null)
                         {
                             //Checks if this command has previously occured or not 
                             if(this.isSetExclusive[command_available.ExclusiveIndex]!="0")
                             {
-                                //Both commands can not occur together
-                                console.log("The "+command_available.command+" and "+this.isSetExclusive[command_available.ExclusiveIndex]+" arguments cannot be used together.")
-                                return;
+                                throw new Error("The "+command_available.command+" and "+this.isSetExclusive[command_available.ExclusiveIndex]+" arguments cannot be used together.");
                             }
                             else
                             {
@@ -156,15 +151,11 @@ class Parser
                             }
                         }
 
-                        //Checks for command demandOption
                         if(command_available.demandOption)
                         {
-                            //Checks for '=' in argument if demandOption is true
                             if(!val.includes("="))
                             {
-                                //Error if argument doesn't have a value
-                                console.log("The '--"+command_available.command+"' argument is required, but missing from input.");
-                                return;
+                                throw new Error("The '--"+command_available.command+"' argument is required, but missing from input.");
                             }
 
                             //Takes the value of argument
@@ -175,54 +166,42 @@ class Parser
 
                             if(command_type=='string')
                             {
-                                //Checks that value must be a string
                                 if(this.isString(val))
                                 {
-                                    //Add the argument in JSON
                                     var command_obj= command_available.command;
-                                    this.argument_JSON[command_obj]=val;
+                                    argument_JSON[command_obj]=val;
                                 }
                                 else
                                 {
-                                    //Incorrect Argument Error
-                                    this.Incorrect_Argument_Message(command_available.command);
-                                    return;
+                                    throw new Error(Incorrect_Argument_Message(command_available.command));
                                 }
                             }
 
                             else if(command_type=='number')
                             {
-                                //Checks that value must be a number
                                 if(this.isNumber(val))
                                 {
-                                    //Add the argument in JSON
                                     var command_obj= command_available.command;
-                                    this.argument_JSON[command_obj]=val;
+                                    argument_JSON[command_obj]=val;
                                 }
 
                                 else
                                 {
-                                    //Incorrect Argument Error
-                                    this.Incorrect_Argument_Message(command_available.command);
-                                    return;
+                                    throw new Error(Incorrect_Argument_Message(command_available.command));
                                 }
                             }
 
                             else
                             {
-                                //Checks that value must be a number
                                 if(this.isBoolean(val))
                                 {
-                                    //Add the argument in JSON
                                     var command_obj= command_available.command;
-                                    this.argument_JSON[command_obj]=val;
+                                    argument_JSON[command_obj]=val;
                                 }
 
                                 else
                                 {
-                                    //Incorrect Argument Error
-                                    this.Incorrect_Argument_Message(command_available.command);
-                                    return;
+                                    throw new Error(Incorrect_Argument_Message(command_available.command));
                                 }
                             }
 
@@ -232,23 +211,17 @@ class Parser
                         //Checks for handler of command and execute it
                         if(command_available.handler!=null)
                             command_available.handler.apply();
+
+                        //break loop of commands if input_argument matches
+                        return;
                     }    
                 })
-
-                //Check for command existance
-                if(command_exist==0)
-                {
-                    //Error message
-                    console.log("Command "+input_command+" does not exist");
-                    return;
-                }
 
             }
 
             else
             {
-                //Error if argument is wrong
-                console.log("Wrong Argument: ",val);
+                throw new Error("Wrong Argument: ",val);
             }
         });
     }
@@ -258,7 +231,7 @@ class Parser
      */
     display()
     {
-        console.log(this.argument_JSON);
+        console.log(argument_JSON);
     }
 
     /**
@@ -328,12 +301,12 @@ class Parser
     }
 
     /**
-     * Errorxmessage for Incorrect Argument
+     * Error message for Incorrect Argument
      * @param {string} command 
      */
     Incorrect_Argument_Message(command)
     {
-        console.log("Enter correct argument for command "+command);
+        throw new Error("Enter correct argument for command "+command);
     }
 }
 

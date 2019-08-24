@@ -1,6 +1,6 @@
 var command_line=require("./command_line");
 
-command_line.command({
+command_line.add_command({
     command:"key",
     describe:"Input the key",
     demandOption:true,
@@ -10,7 +10,7 @@ command_line.command({
     }
 })
 
-command_line.command({
+command_line.add_command({
     command:"name",
     describe:"Input the name",
     demandOption:true,
@@ -20,7 +20,7 @@ command_line.command({
     }
 })
 
-command_line.command({
+command_line.add_command({
     command:"local",
     describe:"Set local",
     ExclusiveIndex: 1,
@@ -29,7 +29,7 @@ command_line.command({
     }
 })
 
-command_line.command({
+command_line.add_command({
     command:"remote",
     describe:"Set remote",
     ExclusiveIndex: 1,
